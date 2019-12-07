@@ -74,3 +74,22 @@ Fixpoint prover (path:path) (tree : mtree) :=
     end
   end.
 
+Lemma length_prover : forall path h (tree : mtree) proof,
+    MTree (len path) h tree ->
+    prover path tree = Ok proof ->
+    lenp proof = len path.
+Proof.
+  intros path. induction path; intros h tree proof Htree.
+  - inversion Htree. injection 1. intros Hproof. now subst proof.
+  - inversion Htree. simpl.
+    destruct a.
+    +
+      case_eq (prover path0 left); [|now auto]. intros proof' Hproof'.
+      simpl. destruct proof'. injection 1. intros Hproof. subst.
+      now rewrite <- (IHpath h1 left (Mk_proof d l)).
+    +
+      case_eq (prover path0 right); [|now auto]. intros proof' Hproof'.
+      simpl. destruct proof'. injection 1. intros Hproof. subst.
+      now rewrite <- (IHpath h2 right (Mk_proof d l)).
+Qed.
+
