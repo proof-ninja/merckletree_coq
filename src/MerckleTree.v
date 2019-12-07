@@ -25,6 +25,12 @@ Fixpoint hash_of_tree t :=
     gen_hash (concat (hash_of_tree left_) (hash_of_tree right_))
   end.
 
+Lemma hash_of_mtree : forall t n h,
+    MTree n h t ->
+    hash_of_tree t = h.
+Proof.
+Admitted.
+
 Definition path := list bool.
 Definition len (p: path) : nat := List.length p.
 
@@ -42,7 +48,7 @@ Fixpoint verifier (path: path) (proof: proof) :=
     Ok (gen_hash (p_data proof))
   | bit :: path' =>
     match p_stream proof with
-    | nil => Error ""
+    | nil => Error tt
     | hd :: tl =>
       verifier path' (Mk_proof (p_data proof) tl) >>= fun h' =>
       if bit then
@@ -91,5 +97,24 @@ Proof.
       case_eq (prover path0 right); [|now auto]. intros proof' Hproof'.
       simpl. destruct proof'. injection 1. intros Hproof. subst.
       now rewrite <- (IHpath h2 right (Mk_proof d l)).
+Qed.
+
+Theorem correctness : forall path h tree proof,
+    MTree (len path) h tree ->
+    prover path tree = Ok proof ->
+    verifier path proof = Ok h.
+Proof.
+  intros path. induction path; intros h tree proof MTree.
+  - inversion MTree.
+    simpl. injection 1. intro. now subst.
+  - inversion MTree. simpl. destruct a.
+    + case_eq (prover path0 left); [|now auto]. simpl.
+      intros [data pstream] Hproof'. injection 1. intro. subst proof. simpl.
+      rewrite (hash_of_mtree right _ _ H1).
+      now rewrite (IHpath h1 left (Mk_proof data pstream)).
+    + case_eq (prover path0 right); [|now auto]. simpl.
+      intros [data pstream] Hproof'. injection 1. intro. subst proof. simpl.
+      rewrite (hash_of_mtree left _ _ H0).
+      now rewrite (IHpath h2 right (Mk_proof data pstream)).
 Qed.
 
