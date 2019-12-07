@@ -5,6 +5,12 @@ Open Scope string_scope.
 Variable data hash : Set.
 Variable gen_hash : data -> hash.
 Variable concat : hash -> hash -> data.
+Axiom concat_left : forall x y a b,
+    x <> a -> concat x y <> concat a b.
+Axiom concat_right : forall x y a b,
+    y <> b -> concat x y <> concat a b.
+
+Variable hash_eq_dec : forall (x y: hash), {x = y} + {x <> y}.
 
 Inductive mtree : Set :=
 | L : data -> mtree
@@ -25,8 +31,30 @@ Fixpoint hash_of_tree t :=
     gen_hash (concat (hash_of_tree left_) (hash_of_tree right_))
   end.
 
+Lemma hash_of_mtree : forall t n h,
+    MTree n h t ->
+    hash_of_tree t = h.
+Proof.
+Admitted.
+
 Definition path := list bool.
 Definition len (p: path) : nat := List.length p.
+
+Fixpoint get_elt (path: path) tree :=
+  match path with
+  | nil =>
+    match tree with
+    | L data => Ok data
+    | N _ _ => Error tt
+    end
+  | bit :: path' =>
+    match tree with
+    | L _ => Error tt
+    | N left_ right_ =>
+      if bit then get_elt path' left_
+      else get_elt path' right_
+    end
+  end.
 
 Inductive proof :=
 | Mk_proof : data -> list hash -> proof.
@@ -42,7 +70,7 @@ Fixpoint verifier (path: path) (proof: proof) :=
     Ok (gen_hash (p_data proof))
   | bit :: path' =>
     match p_stream proof with
-    | nil => Error ""
+    | nil => Error tt
     | hd :: tl =>
       verifier path' (Mk_proof (p_data proof) tl) >>= fun h' =>
       if bit then
@@ -93,3 +121,56 @@ Proof.
       now rewrite <- (IHpath h2 right (Mk_proof d l)).
 Qed.
 
+Theorem correctness : forall path h tree proof,
+    MTree (len path) h tree ->
+    prover path tree = Ok proof ->
+    verifier path proof = Ok h.
+Proof.
+  intros path. induction path; intros h tree proof MTree.
+  - inversion MTree.
+    simpl. injection 1. intro. now subst.
+  - inversion MTree. simpl. destruct a.
+    + case_eq (prover path0 left); [|now auto]. simpl.
+      intros [data pstream] Hproof'. injection 1. intro. subst proof. simpl.
+      rewrite (hash_of_mtree right _ _ H1).
+      now rewrite (IHpath h1 left (Mk_proof data pstream)).
+    + case_eq (prover path0 right); [|now auto]. simpl.
+      intros [data pstream] Hproof'. injection 1. intro. subst proof. simpl.
+      rewrite (hash_of_mtree left _ _ H0).
+      now rewrite (IHpath h2 right (Mk_proof data pstream)).
+Qed.
+
+Definition hash_collision := exists s1 s2,
+    gen_hash s1 = gen_hash s2 /\ s1 <> s2.
+  
+Theorem security : forall path h tree proof,
+    MTree (len path) h tree ->
+    verifier path proof = Ok h ->
+    get_elt path tree <> Ok (p_data proof) ->
+    hash_collision.
+Proof.
+  intro path. induction path; intros h tree proof HTree.
+  - inversion HTree. subst h tree.
+    simpl. injection 1. intros Heq Hneq.
+    exists data0, (p_data proof).
+    now cut (data0 <> p_data proof); [| intro eq; elim Hneq; now rewrite eq].
+  - simpl. destruct (p_stream proof); [now auto|].
+    case_eq (verifier path0 (Mk_proof (p_data proof) l)); [|now auto]. intros h' Hh'. simpl.
+    destruct a.
+    + injection 1. intro. subst h.
+      destruct tree; [now inversion HTree|].
+      inversion HTree. subst.
+      destruct (hash_eq_dec h' h1).
+      * intro Helt. subst h'.
+        now apply (IHpath h1 tree1 (Mk_proof (p_data proof) l) H4).
+      * intros Helt. exists (concat h' h0), (concat h1 h2).
+        now apply (concat_left _ h0 _ h2) in n.
+    + injection 1. intro. subst h.
+      destruct tree; [now inversion HTree|].
+      inversion HTree. subst.
+      destruct (hash_eq_dec h' h2).
+      * intro Helt. subst h'.
+        now apply (IHpath h2 tree2 (Mk_proof (p_data proof) l) H5).
+      * intros Helt. exists (concat h0 h'), (concat h1 h2).
+        now apply (concat_right h0 _ h1 _) in n.
+Qed.
