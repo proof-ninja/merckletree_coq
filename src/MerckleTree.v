@@ -140,3 +140,37 @@ Proof.
       now rewrite (IHpath h2 right (Mk_proof data pstream)).
 Qed.
 
+Definition hash_collision := exists s1 s2,
+    gen_hash s1 = gen_hash s2 /\ s1 <> s2.
+  
+Theorem security : forall path h tree proof,
+    MTree (len path) h tree ->
+    verifier path proof = Ok h ->
+    get_elt path tree <> Ok (p_data proof) ->
+    hash_collision.
+Proof.
+  intro path. induction path; intros h tree proof HTree.
+  - inversion HTree. subst h tree.
+    simpl. injection 1. intros Heq Hneq.
+    exists data0, (p_data proof).
+    now cut (data0 <> p_data proof); [| intro eq; elim Hneq; now rewrite eq].
+  - simpl. destruct (p_stream proof); [now auto|].
+    case_eq (verifier path0 (Mk_proof (p_data proof) l)); [|now auto]. intros h' Hh'. simpl.
+    destruct a.
+    + injection 1. intro. subst h.
+      destruct tree; [now inversion HTree|].
+      inversion HTree. subst.
+      destruct (hash_eq_dec h' h1).
+      * intro Helt. subst h'.
+        now apply (IHpath h1 tree1 (Mk_proof (p_data proof) l) H4).
+      * intros Helt. exists (concat h' h0), (concat h1 h2).
+        now apply (concat_left _ h0 _ h2) in n.
+    + injection 1. intro. subst h.
+      destruct tree; [now inversion HTree|].
+      inversion HTree. subst.
+      destruct (hash_eq_dec h' h2).
+      * intro Helt. subst h'.
+        now apply (IHpath h2 tree2 (Mk_proof (p_data proof) l) H5).
+      * intros Helt. exists (concat h0 h'), (concat h1 h2).
+        now apply (concat_right h0 _ h1 _) in n.
+Qed.
