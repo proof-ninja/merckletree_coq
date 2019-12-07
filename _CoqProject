@@ -1,2 +1,3 @@
 -R "." MerckleTree
+src/Result.v
 src/MerckleTree.v
