@@ -52,3 +52,25 @@ Fixpoint verifier (path: path) (proof: proof) :=
     end
   end.
 
+Fixpoint prover (path:path) (tree : mtree) :=
+  match path with
+  | nil =>
+    match tree with
+    | L data => Ok (Mk_proof data nil)
+    | N _ _ => Error tt
+    end
+  | bit :: path' =>
+    match tree with
+    | L _ => Error tt
+    | N left_ right_ =>
+      if bit then
+        prover path' left_ >>= fun '(Mk_proof data pstream) =>
+        let hr := hash_of_tree right_ in
+        Ok (Mk_proof data (hr :: pstream))
+      else
+        prover path' right_ >>= fun '(Mk_proof data pstream) =>
+        let hl := hash_of_tree left_ in
+        Ok (Mk_proof data (hl :: pstream))
+    end
+  end.
+
