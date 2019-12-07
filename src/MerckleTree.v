@@ -5,6 +5,12 @@ Open Scope string_scope.
 Variable data hash : Set.
 Variable gen_hash : data -> hash.
 Variable concat : hash -> hash -> data.
+Axiom concat_left : forall x y a b,
+    x <> a -> concat x y <> concat a b.
+Axiom concat_right : forall x y a b,
+    y <> b -> concat x y <> concat a b.
+
+Variable hash_eq_dec : forall (x y: hash), {x = y} + {x <> y}.
 
 Inductive mtree : Set :=
 | L : data -> mtree
@@ -33,6 +39,22 @@ Admitted.
 
 Definition path := list bool.
 Definition len (p: path) : nat := List.length p.
+
+Fixpoint get_elt (path: path) tree :=
+  match path with
+  | nil =>
+    match tree with
+    | L data => Ok data
+    | N _ _ => Error tt
+    end
+  | bit :: path' =>
+    match tree with
+    | L _ => Error tt
+    | N left_ right_ =>
+      if bit then get_elt path' left_
+      else get_elt path' right_
+    end
+  end.
 
 Inductive proof :=
 | Mk_proof : data -> list hash -> proof.
