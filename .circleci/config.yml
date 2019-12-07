@@ -3,6 +3,7 @@ jobs:
   build:
     docker:
       - image: eldesh/coq:8.9.0
+      - image: coqorg/coq:8.9
     steps:
       - checkout
       - run: |
