@@ -2,12 +2,15 @@ version: 2
 jobs:
   build:
     docker:
-      - image: eldesh/coq:8.9.0
+      - image: coqorg/coq:8.6
+      - image: coqorg/coq:8.7
+      - image: coqorg/coq:8.8
       - image: coqorg/coq:8.9
+      - image: coqorg/coq:8.10
+      - image: coqorg/coq:latest
     steps:
       - checkout
       - run: |
-          source ~/.profile
           ./configure.sh
           make
           make -j html
