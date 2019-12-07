@@ -3,3 +3,5 @@
 *.vo
 *.glob
 *.v.d
+*.d
+*.aux
