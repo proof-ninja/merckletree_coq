@@ -35,7 +35,11 @@ Lemma hash_of_mtree : forall t n h,
     MTree n h t ->
     hash_of_tree t = h.
 Proof.
-Admitted.
+  induction t; intros n h Htree.
+  - now inversion Htree.
+  - inversion Htree. subst. simpl.
+    now rewrite (IHt1 n0 h1), (IHt2 n0 h2).
+Qed.
 
 Definition path := list bool.
 Definition len (p: path) : nat := List.length p.
